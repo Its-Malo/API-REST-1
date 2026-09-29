@@ -2,13 +2,9 @@ const express = require('express');
 const app = express();
 const port = 3000;
 
-app.get('/', (req, res) => {
-  res.send('Hello World !');
-});
+app.use(express.json());
 
-app.listen(port, () => {
-  console.log(`Serveur en ligne sur http://localhost:${port}`);
-});
+
 
 const products = [
     {
@@ -65,12 +61,32 @@ app.get("/products/:id", (req, res) => {
 })
 
 app.post("/products/add", (req, res) => {
-    const newProduct = req.body;
-    newProduct.id = products.length + 1;
-    newProduct.name = req.body.name;
-    newProduct.category = req.body.category;
-    newProduct.description = req.body.description;
-    newProduct.price = req.body.price;
+    const { name, category, description, price } = req.body || {};
+
+    if (!name || !category || !description || price === undefined) {
+        return res.status(400).json({
+            message: "Champs requis : name, category, description, price"
+        });
+    }
+
+    if (typeof price !== "number" || price < 0) {
+        return res.status(400).json({ message: "price doit être un nombre positif" });
+    }
+
+    const newProduct = {
+        id: nextId++,
+        name,
+        category,
+        description,
+        price
+    };
+
     products.push(newProduct);
-    res.status(201).json({ message: "Created", product: newProduct });
+    res.status(201).json({ message: "Created", products: newProduct });
 })
+
+
+
+app.listen(port, () => {
+  console.log(`Serveur en ligne sur http://localhost:${port}`);
+});
