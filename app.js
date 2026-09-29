@@ -63,9 +63,13 @@ app.get("/products/:id", (req, res) => {
 app.post("/products/add", (req, res) => {
     const { name, category, description, price } = req.body || {};
 
-    if (!name || !category || !description || price === undefined) {
+    const missing = ["name", "category", "description", "price"]
+        .filter(field => req.body?.[field] === undefined || req.body[field] === "");
+
+    if (missing.length > 0) {
         return res.status(400).json({
-            message: "Champs requis : name, category, description, price"
+            message: "Champs manquants",
+            missing
         });
     }
 
@@ -74,7 +78,7 @@ app.post("/products/add", (req, res) => {
     }
 
     const newProduct = {
-        id: nextId++,
+        id: products.length + 1,
         name,
         category,
         description,
@@ -85,8 +89,17 @@ app.post("/products/add", (req, res) => {
     res.status(201).json({ message: "Created", products: newProduct });
 })
 
-
+app.delete("/products/:id", (req, res) => {
+    const productId = parseInt(req.params.id);
+    const productIndex = products.findIndex(p => p.id === productId);
+    if (productIndex !== -1) {
+        products.splice(productIndex, 1);
+        res.status(204).json({ message: "Deleted" });
+    } else {
+        res.status(404).json({ message: "Product not found" });
+    }
+});
 
 app.listen(port, () => {
-  console.log(`Serveur en ligne sur http://localhost:${port}`);
+    console.log(`Serveur en ligne sur http://localhost:${port}`);
 });
