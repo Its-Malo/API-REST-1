@@ -100,6 +100,20 @@ app.delete("/products/:id", (req, res) => {
     }
 });
 
+app.patch("/products/:id", (req, res) => {
+    const productId = parseInt(req.params.id);
+    const product = products.find(p => p.id === productId);
+    if (!product) {
+        return res.status(404).json({ message: "Product not found" });
+    }
+    const { name, category, description, price } = req.body || {};
+    if (name) product.name = name;
+    if (category) product.category = category;
+    if (description) product.description = description;
+    if (price !== undefined) product.price = price;
+    res.status(200).json({ message: "Product updated", product });
+});
+
 app.listen(port, () => {
     console.log(`Serveur en ligne sur http://localhost:${port}`);
 });
