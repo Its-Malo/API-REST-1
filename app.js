@@ -1,4 +1,14 @@
-import express from "express";
+const express = require('express');
+const app = express();
+const port = 3000;
+
+app.get('/', (req, res) => {
+  res.send('Hello World !');
+});
+
+app.listen(port, () => {
+  console.log(`Serveur en ligne sur http://localhost:${port}`);
+});
 
 const products = [
     {
@@ -37,3 +47,30 @@ const products = [
         price: 900
     }
 ]
+
+app.get("/products", (req, res) => {
+    res.json(products);
+    res.status(200).json({ message: "OK" });
+});
+
+app.get("/products/:id", (req, res) => {
+    const productId = parseInt(req.params.id);
+    const product = products.find(p => p.id === productId);
+    if (product) {
+        res.json(product);
+        res.status(200).json({ message: "OK" });
+    } else {
+        res.status(404).json({ message: "Product not found" });
+    }
+})
+
+app.post("/products/add", (req, res) => {
+    const newProduct = req.body;
+    newProduct.id = products.length + 1;
+    newProduct.name = req.body.name;
+    newProduct.category = req.body.category;
+    newProduct.description = req.body.description;
+    newProduct.price = req.body.price;
+    products.push(newProduct);
+    res.status(201).json({ message: "Created", product: newProduct });
+})
