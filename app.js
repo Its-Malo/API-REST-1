@@ -1,10 +1,44 @@
 const express = require('express');
+const Joi = require('joi');
 const app = express();
 const port = 3000;
 
 app.use(express.json());
 
+const productFields = {
+    name: Joi.string().min(1).max(100).pattern(/\S/),
+    category: Joi.string().min(1).max(50).pattern(/\S/),
+    description: Joi.string().min(1).max(500).pattern(/\S/),
+    price: Joi.number().min(0)
+};
 
+const productSchema = Joi.object(
+    Object.fromEntries(
+        Object.entries(productFields).map(([field, schema]) => [field, schema.required()])
+    )
+);
+const productUpdateSchema = Joi.object(productFields).min(1);
+const productIdSchema = Joi.number().integer().positive().max(Number.MAX_SAFE_INTEGER);
+
+const validate = (schema, value, res, options = { convert: false }) => {
+    const { error, value: validatedValue } = schema.validate(value, {
+        ...options,
+        abortEarly: false
+    });
+
+    if (error) {
+        res.status(400).json({
+            message: "Données invalides",
+            details: error.details.map(({ path, message }) => ({
+                field: path.join("."),
+                message
+            }))
+        });
+        return null;
+    }
+
+    return validatedValue;
+};
 
 const products = [
     {
@@ -50,7 +84,11 @@ app.get("/products", (req, res) => {
 });
 
 app.get("/products/:id", (req, res) => {
-    const productId = parseInt(req.params.id);
+    const productId = validate(productIdSchema, req.params.id, res, { convert: true });
+    if (productId === null) {
+        return;
+    }
+
     const product = products.find(p => p.id === productId);
     if (product) {
         res.json(product);
@@ -61,28 +99,14 @@ app.get("/products/:id", (req, res) => {
 })
 
 app.post("/products/add", (req, res) => {
-    const { name, category, description, price } = req.body || {};
-
-    const missing = ["name", "category", "description", "price"]
-        .filter(field => req.body?.[field] === undefined || req.body[field] === "");
-
-    if (missing.length > 0) {
-        return res.status(400).json({
-            message: "Champs manquants",
-            missing
-        });
-    }
-
-    if (typeof price !== "number" || price < 0) {
-        return res.status(400).json({ message: "price doit être un nombre positif" });
+    const productData = validate(productSchema, req.body, res);
+    if (productData === null) {
+        return;
     }
 
     const newProduct = {
         id: products.length + 1,
-        name,
-        category,
-        description,
-        price
+        ...productData
     };
 
     products.push(newProduct);
@@ -90,27 +114,37 @@ app.post("/products/add", (req, res) => {
 })
 
 app.delete("/products/:id", (req, res) => {
-    const productId = parseInt(req.params.id);
+    const productId = validate(productIdSchema, req.params.id, res, { convert: true });
+    if (productId === null) {
+        return;
+    }
+
     const productIndex = products.findIndex(p => p.id === productId);
     if (productIndex !== -1) {
         products.splice(productIndex, 1);
-        res.status(204).json({ message: "Deleted" });
+        res.status(204).send();
     } else {
         res.status(404).json({ message: "Product not found" });
     }
 });
 
 app.patch("/products/:id", (req, res) => {
-    const productId = parseInt(req.params.id);
+    const productId = validate(productIdSchema, req.params.id, res, { convert: true });
+    if (productId === null) {
+        return;
+    }
+
     const product = products.find(p => p.id === productId);
     if (!product) {
         return res.status(404).json({ message: "Product not found" });
     }
-    const { name, category, description, price } = req.body || {};
-    if (name) product.name = name;
-    if (category) product.category = category;
-    if (description) product.description = description;
-    if (price !== undefined) product.price = price;
+
+    const updates = validate(productUpdateSchema, req.body, res);
+    if (updates === null) {
+        return;
+    }
+
+    Object.assign(product, updates);
     res.status(200).json({ message: "Product updated", product });
 });
 
